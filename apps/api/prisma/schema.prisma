@@ -1,0 +1,555 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  CONTENT_ADMIN
+  REVIEW_ADMIN
+  KOL
+}
+
+enum AgeRating {
+  KIDS
+  CHILDREN
+  TEEN
+  ADULT
+}
+
+enum ContentType {
+  AUDIOBOOK
+  PODCAST
+}
+
+enum AccessType {
+  FREE
+  SUBSCRIPTION
+  PURCHASE
+}
+
+enum Language {
+  ZH
+  EN
+  MN
+  MN_CYRL
+}
+
+enum SyncStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum PlanType {
+  MONTHLY
+  QUARTERLY
+  BIANNUAL
+  YEARLY
+}
+
+enum PaymentProvider {
+  STRIPE
+  WECHAT
+  ALIPAY
+}
+
+enum PaymentType {
+  SUBSCRIPTION
+  PURCHASE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum CoinSource {
+  CHAPTER_COMPLETE
+  DURATION
+  ACTIVITY
+  PURCHASE
+}
+
+enum CoinType {
+  EARN
+  SPEND
+}
+
+enum CollectionType {
+  RANKING
+  CURATED
+  KOL
+  BUNDLE
+}
+
+enum BadgeTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum TriggerType {
+  BOOKS_COMPLETED
+  LISTEN_HOURS
+  CONSECUTIVE_DAYS
+  FAVORITES_COUNT
+  COINS_EARNED
+  CATEGORY_BOOKS
+  ACTIVITY_CHECKIN
+  MANUAL
+}
+
+enum RewardType {
+  DISPLAY_ONLY
+  COINS
+  MEMBERSHIP_DAYS
+  COUPON
+  MERCH
+}
+
+enum SocialProvider {
+  WECHAT
+  GOOGLE
+  APPLE
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── User System ──────────────────────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(cuid())
+  email             String?   @unique
+  phone             String?   @unique
+  passwordHash      String?
+  name              String
+  avatar            String?
+  role              UserRole  @default(USER)
+  isVerified        Boolean   @default(false)
+  preferredLanguage Language?
+  referredBy        String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  referredByUser     User?               @relation("Referrals", fields: [referredBy], references: [id])
+  referredUsers      User[]              @relation("Referrals")
+  socialAccounts     SocialAccount[]
+  childProfiles      ChildProfile[]
+  kolProfile         KolProfile?
+  subscription       Subscription?
+  payments           Payment[]
+  purchases          UserPurchase[]
+  coinWallet         CoinWallet?
+  coinTransactions   CoinTransaction[]
+  listeningProgress  ListeningProgress[]
+  heartbeats         ListeningHeartbeat[]
+  bookmarks          Bookmark[]
+  favorites          Favorite[]
+  badgeProgress      BadgeProgress[]
+  userBadges         UserBadge[]
+  collections        Collection[]
+  uploadedAudiobooks Audiobook[]
+  contentReviews     ContentReview[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model SocialAccount {
+  id             String         @id @default(cuid())
+  userId         String
+  provider       SocialProvider
+  providerUserId String
+  accessToken    String
+  createdAt      DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerUserId])
+}
+
+model ChildProfile {
+  id           String    @id @default(cuid())
+  parentUserId String
+  name         String
+  avatar       String?
+  pin          String
+  maxAgeRating AgeRating @default(CHILDREN)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  parentUser User @relation(fields: [parentUserId], references: [id])
+}
+
+model KolProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  bio            String?
+  socialLinks    Json?
+  followerCount  Int      @default(0)
+  commissionRate Float?
+  totalEarnings  Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ─── Content System ───────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  parentId  String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  parent           Category?         @relation("CategoryTree", fields: [parentId], references: [id])
+  children         Category[]        @relation("CategoryTree")
+  audiobooks       Audiobook[]
+  badgeDefinitions BadgeDefinition[]
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  audiobooks AudiobookTag[]
+}
+
+model Audiobook {
+  id             String      @id @default(cuid())
+  title          String
+  author         String
+  narrator       String?
+  description    String
+  coverUrl       String?
+  categoryId     String
+  language       Language    @default(ZH)
+  duration       Int         @default(0)
+  totalChapters  Int         @default(0)
+  contentType    ContentType @default(AUDIOBOOK)
+  accessType     AccessType  @default(SUBSCRIPTION)
+  ageRating      AgeRating   @default(ADULT)
+  originalPrice  Float       @default(0)
+  memberPrice    Float       @default(0)
+  isPublished    Boolean     @default(false)
+  uploadedBy     String
+  externalBuyUrl String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  category          Category            @relation(fields: [categoryId], references: [id])
+  uploader          User                @relation(fields: [uploadedBy], references: [id])
+  tags              AudiobookTag[]
+  chapters          Chapter[]
+  contentReviews    ContentReview[]
+  collectionItems   CollectionItem[]
+  payments          Payment[]
+  purchases         UserPurchase[]
+  listeningProgress ListeningProgress[]
+  favorites         Favorite[]
+
+  @@index([categoryId])
+  @@index([accessType])
+  @@index([ageRating])
+  @@index([isPublished])
+  @@index([language])
+}
+
+model AudiobookTag {
+  audiobookId String
+  tagId       String
+
+  audiobook Audiobook @relation(fields: [audiobookId], references: [id])
+  tag       Tag       @relation(fields: [tagId], references: [id])
+
+  @@id([audiobookId, tagId])
+}
+
+model Chapter {
+  id          String     @id @default(cuid())
+  audiobookId String
+  title       String
+  order       Int
+  duration    Int
+  audioKey    String
+  textContent String?
+  syncDataUrl String?
+  syncStatus  SyncStatus @default(PENDING)
+  isFree      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+
+  audiobook         Audiobook            @relation(fields: [audiobookId], references: [id], onDelete: Cascade)
+  listeningProgress ListeningProgress[]
+  heartbeats        ListeningHeartbeat[]
+  bookmarks         Bookmark[]
+
+  @@index([audiobookId, order])
+}
+
+model ContentReview {
+  id          String       @id @default(cuid())
+  audiobookId String
+  reviewerId  String
+  status      ReviewStatus @default(PENDING)
+  note        String?
+  createdAt   DateTime     @default(now())
+
+  audiobook Audiobook @relation(fields: [audiobookId], references: [id])
+  reviewer  User      @relation(fields: [reviewerId], references: [id])
+}
+
+// ─── Collection System ────────────────────────────────────────────────────────
+
+model Collection {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  coverUrl    String?
+  type        CollectionType
+  createdBy   String
+  isPublished Boolean        @default(false)
+  order       Int            @default(0)
+  bundlePrice Float?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  creator User             @relation(fields: [createdBy], references: [id])
+  items   CollectionItem[]
+}
+
+model CollectionItem {
+  collectionId String
+  audiobookId  String
+  order        Int    @default(0)
+
+  collection Collection @relation(fields: [collectionId], references: [id])
+  audiobook  Audiobook  @relation(fields: [audiobookId], references: [id])
+
+  @@id([collectionId, audiobookId])
+}
+
+// ─── Commerce System ──────────────────────────────────────────────────────────
+
+model Subscription {
+  id           String             @id @default(cuid())
+  userId       String             @unique
+  status       SubscriptionStatus @default(TRIAL)
+  planType     PlanType
+  startDate    DateTime
+  endDate      DateTime
+  trialEndDate DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id              String          @id @default(cuid())
+  userId          String
+  provider        PaymentProvider
+  type            PaymentType
+  status          PaymentStatus   @default(PENDING)
+  amount          Float
+  currency        String          @default("CNY")
+  providerOrderId String?
+  audiobookId     String?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user      User          @relation(fields: [userId], references: [id])
+  audiobook Audiobook?    @relation(fields: [audiobookId], references: [id])
+  purchases UserPurchase[]
+
+  @@index([userId])
+  @@index([provider, status])
+}
+
+model UserPurchase {
+  id          String   @id @default(cuid())
+  userId      String
+  audiobookId String
+  paymentId   String
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  audiobook Audiobook @relation(fields: [audiobookId], references: [id])
+  payment   Payment   @relation(fields: [paymentId], references: [id])
+
+  @@unique([userId, audiobookId])
+}
+
+// ─── Coin System ──────────────────────────────────────────────────────────────
+
+model CoinWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model CoinTransaction {
+  id           String     @id @default(cuid())
+  userId       String
+  type         CoinType
+  amount       Int
+  balanceAfter Int
+  source       CoinSource
+  sourceId     String?
+  createdAt    DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── Listening Behavior ───────────────────────────────────────────────────────
+
+model ListeningProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  audiobookId     String
+  chapterId       String
+  position        Int      @default(0)
+  totalListened   Int      @default(0)
+  verifiedSeconds Int      @default(0)
+  completed       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id])
+  audiobook Audiobook @relation(fields: [audiobookId], references: [id])
+  chapter   Chapter   @relation(fields: [chapterId], references: [id])
+
+  @@unique([userId, audiobookId])
+  @@index([userId])
+}
+
+model ListeningHeartbeat {
+  id           String   @id @default(cuid())
+  userId       String
+  chapterId    String
+  position     Int
+  duration     Int
+  playbackRate Float    @default(1.0)
+  reportedAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  chapter Chapter @relation(fields: [chapterId], references: [id])
+
+  @@index([userId, chapterId])
+  @@index([reportedAt])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  chapterId String
+  position  Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  chapter Chapter @relation(fields: [chapterId], references: [id])
+}
+
+model Favorite {
+  id          String   @id @default(cuid())
+  userId      String
+  audiobookId String
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  audiobook Audiobook @relation(fields: [audiobookId], references: [id])
+
+  @@unique([userId, audiobookId])
+}
+
+// ─── Badge & Mission System ───────────────────────────────────────────────────
+
+model BadgeDefinition {
+  id                String      @id @default(cuid())
+  name              String
+  description       String
+  iconUrl           String
+  iconLockedUrl     String
+  tier              BadgeTier
+  triggerType       TriggerType
+  triggerValue      Int
+  triggerCategoryId String?
+  rewardType        RewardType
+  rewardValue       Int         @default(0)
+  rewardDescription String?
+  isKidsMode        Boolean     @default(false)
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+
+  triggerCategory Category?       @relation(fields: [triggerCategoryId], references: [id])
+  progress        BadgeProgress[]
+  userBadges      UserBadge[]
+}
+
+model BadgeProgress {
+  id           String   @id @default(cuid())
+  userId       String
+  badgeId      String
+  currentValue Int      @default(0)
+  targetValue  Int
+  isCompleted  Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id])
+  badge BadgeDefinition @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+model UserBadge {
+  id              String    @id @default(cuid())
+  userId          String
+  badgeId         String
+  earnedAt        DateTime  @default(now())
+  isDisplayed     Boolean   @default(false)
+  rewardClaimed   Boolean   @default(false)
+  rewardClaimedAt DateTime?
+
+  user  User            @relation(fields: [userId], references: [id])
+  badge BadgeDefinition @relation(fields: [badgeId], references: [id])
+
+  @@index([userId])
+}
