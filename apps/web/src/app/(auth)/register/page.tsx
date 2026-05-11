@@ -22,7 +22,9 @@ import {
 } from '@/components/ui/form';
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  middleName: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -42,12 +44,25 @@ export default function RegisterPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: '', phone: '', password: '', confirmPassword: '' },
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      middleName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+    },
   });
 
   const onSubmit = async ({ confirmPassword: _, ...values }: FormValues) => {
     try {
-      const payload = { ...values, email: values.email || undefined, phone: values.phone || undefined };
+      const payload = {
+        ...values,
+        email: values.email || undefined,
+        phone: values.phone || undefined,
+        middleName: values.middleName || undefined,
+      };
       const { data } = await api.post<AuthResponse>('/auth/register', payload);
       setAuth(data.user, data.accessToken, data.refreshToken);
       toast.success('Account created!');
@@ -68,14 +83,42 @@ export default function RegisterPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="San" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Zhang" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
-              name="name"
+              name="middleName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Middle name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input placeholder="Optional" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

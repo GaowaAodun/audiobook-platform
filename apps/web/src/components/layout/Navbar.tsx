@@ -37,14 +37,14 @@ export default function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
-                    <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={user.avatar ?? undefined} alt={`${user.firstName} ${user.lastName}`} />
+                    <AvatarFallback>{((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-sm font-medium">{[user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(' ')}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email ?? user.phone}</p>
                 </div>
                 <DropdownMenuSeparator />

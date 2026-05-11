@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsEnum,
+  IsNotEmpty,
   IsOptional,
   IsString,
   MinLength,
@@ -24,9 +25,20 @@ export class RegisterDto {
   @MinLength(8)
   password: string;
 
-  @ApiProperty({ example: 'Zhang San' })
+  @ApiProperty({ example: 'San' })
   @IsString()
-  name: string;
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty({ example: 'Zhang' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @ApiPropertyOptional({ example: 'Wei' })
+  @IsOptional()
+  @IsString()
+  middleName?: string;
 }
 
 export class LoginDto {
@@ -52,9 +64,20 @@ export class SocialLoginDto {
   @IsString()
   accessToken: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'San' })
   @IsString()
-  name: string;
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty({ example: 'Zhang' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @ApiPropertyOptional({ example: 'Wei' })
+  @IsOptional()
+  @IsString()
+  middleName?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

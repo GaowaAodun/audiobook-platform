@@ -16,7 +16,9 @@ const USER_PUBLIC_SELECT = {
   id: true,
   email: true,
   phone: true,
-  name: true,
+  firstName: true,
+  lastName: true,
+  middleName: true,
   avatar: true,
   role: true,
   isVerified: true,
@@ -56,7 +58,9 @@ export class AuthService {
         email: dto.email,
         phone: dto.phone,
         passwordHash,
-        name: dto.name,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        middleName: dto.middleName,
         coinWallet: { create: {} },
       },
       select: USER_PUBLIC_SELECT,
@@ -98,7 +102,9 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        middleName: dto.middleName,
         avatar: dto.avatar,
         socialAccounts: {
           create: {

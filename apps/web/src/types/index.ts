@@ -9,7 +9,9 @@ export interface User {
   id: string;
   email: string | null;
   phone: string | null;
-  name: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
   avatar: string | null;
   role: UserRole;
   isVerified: boolean;

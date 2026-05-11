@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -22,6 +22,21 @@ export const useAuthStore = create<AuthState>()(
       setAccessToken: (token) => set({ accessToken: token }),
       clearAuth: () => set({ user: null, accessToken: null, refreshToken: null }),
     }),
-    { name: 'auth-storage' },
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version < 1) {
+          // Old state had `name` but not `firstName`/`lastName` — clear it
+          const state = persistedState as Record<string, unknown>;
+          const user = state?.user as Record<string, unknown> | null;
+          if (user && 'name' in user && !('firstName' in user)) {
+            return { user: null, accessToken: null, refreshToken: null };
+          }
+        }
+        return persistedState as AuthState;
+      },
+    },
   ),
 );
